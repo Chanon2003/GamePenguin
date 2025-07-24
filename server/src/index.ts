@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 dotenv.config(); // โหลดค่า default จาก .env หลัก
 
 import pool from './config/db/db'; // <<-- เชื่อมต่อกับ db.ts
+import errorHandlerMiddleware from './middleware/error-handler';
+import userRouter from './routes/user.routes';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -27,21 +29,9 @@ pool.connect()
   });
 
 // ตัวอย่าง route
-app.get('/', async (req, res) => {
-  const result = await pool.query(
-    'Select * from users',
-  )
-  res.send(result.rows);
-});
+app.use('/api/users',userRouter);
 
-app.post('/', async (req, res) => {
-  const { username,email,password } = req.body;
-  const result = await pool.query(
-    'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *',
-    [username, email, password]
-  );
-  res.status(201).json(result.rows[0]);
-});
+app.use(errorHandlerMiddleware)
 
 app.listen(port, () => {
   console.log(`🚀 Server is running at http://localhost:${port}`);
