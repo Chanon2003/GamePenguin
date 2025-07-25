@@ -3,9 +3,9 @@ import pool from '../db';
 const addUsernameColumn = async () => {
   try {
     await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token VARCHAR(100);
     `);
-    console.log('✅ Added username column to users table');
+    console.log('✅ Added refresh_token column to users table');
   } catch (err) {
     console.error('❌ Error adding username column:', err);
   } finally {
@@ -15,4 +15,4 @@ const addUsernameColumn = async () => {
 
 addUsernameColumn();
 
-//npx ts-node src/config/db/migrations/002_add_username_to_users.ts
+//npx ts-node src/config/db/migrations/001_create_users_table.ts

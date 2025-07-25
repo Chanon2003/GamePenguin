@@ -20,6 +20,7 @@ const createUsersTable = async () => {
         last_login TIMESTAMP,
         profile_picture_url VARCHAR(255),
         username VARCHAR(100) UNIQUE,
+        refresh_token VARCHAR(255),
         first_name VARCHAR(100),
         last_name VARCHAR(100),
         bio TEXT,
