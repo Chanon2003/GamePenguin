@@ -1,9 +1,15 @@
-import { Button } from "@/components/ui/button"
+import { Outlet } from "react-router-dom"
+import Navbar from "./pages/layout/Navbar"
 
 function App() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center">
-      <Button>Click me</Button>
+    <div>
+      <div className="min-h-screen bg-white dark:bg-zinc-900 text-black dark:text-white">
+        <Navbar />
+        <main>
+          <Outlet /> {/* หน้านี้จะถูกแทนที่ด้วย children route */}
+        </main>
+      </div>
     </div>
   )
 }
