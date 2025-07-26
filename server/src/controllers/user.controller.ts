@@ -11,7 +11,6 @@ dotenv.config({ path: '.env' });
 
 // Extend Express Request interface to include 'user'
 
-
 export const signupEmail = asyncWrapper(async (
   req: Request,
   res: Response,
