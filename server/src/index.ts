@@ -42,7 +42,7 @@ pool.connect()
   });
 
 // ตัวอย่าง route
-app.use('/api/users',userRouter);
+app.use('/api/user',userRouter);
 
 app.use(errorHandlerMiddleware)
 

@@ -13,7 +13,7 @@ const errorHandlerMiddleware = (
   const message = err.message || 'Something went wrong'
 
   return res.status(statusCode).json({
-    msg: message,
+    message: message,
     error: true,
     success: false,
   })

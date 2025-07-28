@@ -1,10 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -13,6 +11,11 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import SummaryApi from "@/common/SummaryApi"
+import Axios from "@/utils/Axios"
+import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
+import { AxiosError } from "axios"
 
 // 🧠 1. สร้าง schema ด้วย zod
 const formSchema = z
@@ -27,6 +30,7 @@ const formSchema = z
   })
 
 export default function Register() {
+  const navigate = useNavigate()
   // 🧠 2. ใช้ useForm จาก React Hook Form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,9 +42,32 @@ export default function Register() {
   })
 
   // 🧠 3. onSubmit
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log("Register data:", data)
-    // ทำ logic ส่งข้อมูลไป backend ที่นี่
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    try {
+      console.log("Register data:", data)
+      const response = await Axios({
+        ...SummaryApi.register,
+        data: {
+          email: data.email,
+          password: data.password,
+        },
+      })
+      console.log("Response from register:", response)
+      const { data: responseData } = response;
+      if (responseData.success && response.status === 201) {
+        toast.dismiss();
+        toast.success("Registration successful! Please check your email to verify your account.")
+      }
+      navigate("/login")
+      // ทำ logic ส่งข้อมูลไป backend ที่นี่
+    } catch (error: unknown) {
+       toast.dismiss();
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      } else {
+        toast.error("เกิดข้อผิดพลาดบางอย่าง");
+      }
+    }
   }
 
   return (

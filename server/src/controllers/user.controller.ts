@@ -16,6 +16,7 @@ export const signupEmail = asyncWrapper(async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("Received signup request:", req.body);
   let { email, password }: { email: string; password: string } = req.body;
 
   if (!email || !password) {
@@ -29,8 +30,8 @@ export const signupEmail = asyncWrapper(async (
     return next(createCustomError('Invalid email format', 400));
   }
 
-  if (password.length < 8) {
-    return next(createCustomError('Password must be at least 8 characters long', 400));
+  if (password.length < 6) {
+    return next(createCustomError('Password must be at least 6 characters long', 400));
   }
 
   const existingUser = await pool.query(
@@ -55,6 +56,9 @@ export const signupEmail = asyncWrapper(async (
       email: newUser.rows[0].email,
       profileSetup: false,
     },
+    message: 'User registered successfully',
+    success: true,
+    error: false
   });
 });
 
@@ -176,6 +180,55 @@ export const signout = asyncWrapper(async (
 
   return res.status(200).json({
     message: 'Sign out successful',
+    success: true,
+  });
+});
+
+export const refreshToken = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  if (!user || !user.id) {
+    return next(createCustomError('User not authenticated', 401));
+  }
+
+  const userId = user.id;
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    return next(createCustomError('Refresh token not found', 401));
+  }
+
+  const userRecord = await pool.query(
+    'SELECT * FROM users WHERE id = $1',
+    [userId]
+  );
+
+  if (userRecord.rowCount === 0) {
+    return next(createCustomError('User not found', 404));
+  }
+
+  const isValidToken = await bcrypt.compare(refreshToken, userRecord.rows[0].refresh_token);
+
+  if (!isValidToken) {
+    return next(createCustomError('Invalid refresh token', 403));
+  }
+
+  const newAccessToken = await generatedAccessToken(userRecord.rows[0].email, userId);
+
+  res.cookie('accessToken', newAccessToken, {
+    maxAge: 1000 * 60 * 60, // 1 hour
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: 'none'
+  });
+
+  return res.status(200).json({
+    accessToken: newAccessToken,
+    message: 'Access token refreshed successfully',
     success: true,
   });
 });
