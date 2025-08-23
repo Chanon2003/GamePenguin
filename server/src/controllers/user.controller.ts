@@ -153,7 +153,9 @@ export const signinEmail = asyncWrapper(async (
       is_verified: user.rows[0].is_verified,
       last_login: user.rows[0].last_login,
       created_at: user.rows[0].created_at
-    }
+    },
+    success: true,
+    error: false,
   });
 });
 

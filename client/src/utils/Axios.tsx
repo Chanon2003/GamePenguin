@@ -6,8 +6,6 @@ import SummaryApi from "@/common/SummaryApi";
 
 export const baseURL = import.meta.env.VITE_SERVER_URL;
 
-console.log("Axios baseURL:", baseURL);
-
 const Axios = axios.create({
   baseURL: baseURL,
   withCredentials: true,
@@ -46,8 +44,7 @@ Axios.interceptors.response.use(
 
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes("/auth")
+      !originalRequest._retry
     ) {
       originalRequest._retry = true;
 
@@ -69,7 +66,6 @@ Axios.interceptors.response.use(
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           toast.error("Session expired. Please login again.");
-          window.location.href = "/auth";
           return Promise.reject(err);
         } finally {
           isRefreshing = false;

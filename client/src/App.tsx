@@ -5,7 +5,7 @@ import { Toaster } from 'sonner'
 function App() {
   return (
     <div>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" toastOptions={{duration:3000}}/>
       <div className="min-h-screen bg-white dark:bg-zinc-900 text-black dark:text-white">
         <Navbar />
         <main>
