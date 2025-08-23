@@ -16,6 +16,11 @@ import Axios from "@/utils/Axios"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 import { AxiosError } from "axios"
+import { useSelector } from "react-redux"
+import type { RootState } from "@/store/store"
+import type { AppDispatch } from "@/store/store"
+import { useDispatch } from "react-redux"
+import { setUserDetails } from "@/store/userSlice"
 
 // 🧠 1. สร้าง schema ด้วย zod
 const formSchema = z.object({
@@ -24,7 +29,11 @@ const formSchema = z.object({
 })
 
 export default function Login() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>()
+
+  const user = useSelector((state: RootState) => state.user);
+  console.log('user from store', user);
 
   // 🧠 2. ใช้ useForm จาก React Hook Form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -46,14 +55,21 @@ export default function Login() {
           password: data.password,
         },
       })
-      console.log('response back',response)
+
+
       const { data: responseData } = response
-      if (responseData.success && response.status === 200) {
+      if (responseData.success && response.status === 200 && responseData.users) {
+        
+        console.log('responseData',responseData.users)
         toast.dismiss()
+        dispatch(setUserDetails(responseData.users)) // ส่งตรง object
         toast.success("Login successful!")
-        navigate("/") 
+        navigate("/")
+      } else {
+        toast.error("Login failed: data not found")
       }
     } catch (error: unknown) {
+      console.log('error', error)
       toast.dismiss()
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด")

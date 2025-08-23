@@ -8,6 +8,9 @@ interface UserState {
   avatar: string
   last_login_date: string
   role: string
+  is_active: boolean
+  is_verified: boolean
+  created_at:string
 }
 
 const initialState: UserState = {
@@ -17,6 +20,9 @@ const initialState: UserState = {
   avatar: '',
   last_login_date: '',
   role: '',
+  is_active: false,
+  is_verified: false,
+  created_at: '',
 }
 
 const userSlice = createSlice({
@@ -30,6 +36,9 @@ const userSlice = createSlice({
       state.avatar = action.payload.avatar
       state.last_login_date = action.payload.last_login_date
       state.role = action.payload.role
+      state.is_active = action.payload.is_active
+      state.is_verified = action.payload.is_verified
+      state.created_at = action.payload.created_at
     },
     logout: (state) => {
       state.id = ''
@@ -38,6 +47,9 @@ const userSlice = createSlice({
       state.avatar = ''
       state.last_login_date = ''
       state.role = ''
+      state.is_active = false
+      state.is_verified = false
+      state.created_at = ''
     },
   },
 })
