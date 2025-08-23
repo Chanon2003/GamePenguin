@@ -56,7 +56,6 @@ export default function Login() {
         },
       })
 
-
       const { data: responseData } = response
       if (responseData.success && response.status === 200 && responseData.users) {
         
