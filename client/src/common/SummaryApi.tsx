@@ -7,6 +7,10 @@ const SummaryApi = {
     url: '/api/user/signin-email',
     method: 'post',
   },
+  logout: {
+    url: '/api/user/logout',
+    method: 'get',
+  },
   refreshToken: {
     url: '/api/user/refresh-token',
     method: 'post'
