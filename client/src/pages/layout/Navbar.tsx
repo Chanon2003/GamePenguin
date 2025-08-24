@@ -1,6 +1,4 @@
 import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
-import { Moon, Sun } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { useDispatch, useSelector } from "react-redux"
@@ -12,7 +10,7 @@ import Axios from "@/utils/Axios"
 
 // import { persistor } from '@/store/store'
 import { logout } from "@/store/userSlice"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import useMobile from "@/hooks/userMobile"
 
 const Navbar = () => {
@@ -22,8 +20,33 @@ const Navbar = () => {
   const dispatch = useDispatch<AppDispatch>()
 
   const [opentapProfile, setOpentapProfile] = useState<boolean>(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const { isMobile } = useMobile(768);
+
+  //useRef \ dropdown / menu
+  const profileRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  //useEffect Dropdown scan in-out
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Profile dropdown
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setOpentapProfile(false);
+      }
+
+      // Mobile menu
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -41,10 +64,12 @@ const Navbar = () => {
     }
   }
 
-
   return (
     <header className="flex items-center justify-between px-6 py-4 shadow-sm bg-white dark:bg-zinc-900 border-b relative">
-      <h1 className="text-xl font-semibold text-zinc-800 dark:text-zinc-100">
+      <h1
+        className="text-xl font-semibold text-zinc-800 dark:text-zinc-100 cursor-pointer"
+        onClick={() => navigate('/')}
+      >
         🚀 Penguin Game
       </h1>
 
@@ -73,15 +98,15 @@ const Navbar = () => {
                 <>
                   <button
                     className="px-4 py-2 text-zinc-700 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded"
-                    onClick={() => setOpentapProfile(!opentapProfile)}
+                    onClick={() => {
+                      setOpentapProfile(!opentapProfile)
+                      navigate('/user/profile')
+                    }
+                    }
                   >
                     Profile
                   </button>
-                  {/* {opentapProfile && (
-                    <div className="px-4 py-2 text-zinc-700 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-700 rounded">
-                      Profile panel content
-                    </div>
-                  )} */}
+
                   <button
                     className="px-4 py-2 bg-blue-500 dark:bg-green-600 text-white rounded"
                     onClick={handleLogout}
@@ -119,9 +144,8 @@ const Navbar = () => {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
 
-          {userId ? (
-            <div className="flex items-center gap-3 relative">
-              {/* Profile Avatar */}
+          {userId && (
+            <div className="flex items-center gap-3 relative" ref={profileRef}>
               <div
                 className="bg-white dark:bg-zinc-800 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow hover:shadow-md transition-shadow"
                 onClick={() => setOpentapProfile(!opentapProfile)}
@@ -129,10 +153,15 @@ const Navbar = () => {
                 soi
               </div>
 
-              {/* Profile Dropdown */}
               {opentapProfile && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded shadow-lg py-2">
-                  <p className="px-4 py-2 text-zinc-700 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer">
+                  <p
+                    className="px-4 py-2 text-zinc-700 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer"
+                    onClick={() => {
+                      navigate('/user/profile')
+                      setOpentapProfile(!opentapProfile)
+                    }}
+                  >
                     Profile
                   </p>
                   <p
@@ -144,22 +173,8 @@ const Navbar = () => {
                 </div>
               )}
             </div>
-          ) : (
-            <>
-              <button
-                className="bg-blue-500 text-white dark:bg-green-600 dark:text-yellow-300 dark:hover:bg-green-700 cursor-pointer px-4 py-2 rounded"
-                onClick={() => navigate("/login")}
-              >
-                Login
-              </button>
-              <button
-                className="bg-blue-500 text-white dark:bg-green-600 dark:text-yellow-300 dark:hover:bg-green-700 cursor-pointer px-4 py-2 rounded"
-                onClick={() => navigate("/register")}
-              >
-                Sign Up
-              </button>
-            </>
           )}
+
         </div>
       )}
     </header>
