@@ -6,6 +6,7 @@ import Profile from "@/pages/user/profile/Profile";
 import { createBrowserRouter } from "react-router-dom";
 import AdminPermision from "./PrivateRoute";
 import DashBoard from "@/pages/layout/Dashboard";
+import NotFound from "@/pages/layout/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -15,7 +16,7 @@ export const router = createBrowserRouter([
       { path: "", element: <Home /> },
       { path: "login", element: <Login /> },
       { path: "register", element: <Register /> },
-
+      { path: "*",element:<NotFound/>},
       {
         path: "user",
         element: (
