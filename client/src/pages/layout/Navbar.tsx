@@ -76,7 +76,7 @@ const Navbar = () => {
       {/* Desktop / Mobile */}
       {isMobile ? (
         // Mobile: Hamburger menu
-        <div className="relative">
+        <div className="relative" ref={mobileMenuRef}>
           <button
             className="text-zinc-800 dark:text-zinc-100 p-2 bg-zinc-200 dark:bg-zinc-700 rounded"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -99,7 +99,7 @@ const Navbar = () => {
                   <button
                     className="px-4 py-2 text-zinc-700 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded"
                     onClick={() => {
-                      setOpentapProfile(!opentapProfile)
+                      setMobileMenuOpen(!mobileMenuOpen)
                       navigate('/user/profile')
                     }
                     }
@@ -109,7 +109,10 @@ const Navbar = () => {
 
                   <button
                     className="px-4 py-2 bg-blue-500 dark:bg-green-600 text-white rounded"
-                    onClick={handleLogout}
+                    onClick={()=>{
+                      setMobileMenuOpen(!mobileMenuOpen)
+                      handleLogout()
+                    }}
                   >
                     Logout
                   </button>
@@ -166,7 +169,10 @@ const Navbar = () => {
                   </p>
                   <p
                     className="px-4 py-2 text-zinc-700 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer"
-                    onClick={handleLogout}
+                     onClick={()=>{
+                      setOpentapProfile(!opentapProfile)
+                      handleLogout()
+                    }}
                   >
                     Logout
                   </p>
