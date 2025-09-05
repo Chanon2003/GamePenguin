@@ -47,7 +47,6 @@ export default function Login() {
   // 🧠 3. onSubmit
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
-      console.log("Login data:", data)
       const response = await Axios({
         ...SummaryApi.login, // เปลี่ยนเป็น API login
         data: {
