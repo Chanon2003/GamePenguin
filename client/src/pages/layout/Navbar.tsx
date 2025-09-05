@@ -109,7 +109,7 @@ const Navbar = () => {
 
                   <button
                     className="px-4 py-2 bg-blue-500 dark:bg-green-600 text-white rounded"
-                    onClick={()=>{
+                    onClick={() => {
                       setMobileMenuOpen(!mobileMenuOpen)
                       handleLogout()
                     }}
@@ -147,7 +147,7 @@ const Navbar = () => {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
 
-          {userId && (
+          {userId ? (
             <div className="flex items-center gap-3 relative" ref={profileRef}>
               <div
                 className="bg-white dark:bg-zinc-800 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow hover:shadow-md transition-shadow"
@@ -169,7 +169,7 @@ const Navbar = () => {
                   </p>
                   <p
                     className="px-4 py-2 text-zinc-700 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer"
-                     onClick={()=>{
+                    onClick={() => {
                       setOpentapProfile(!opentapProfile)
                       handleLogout()
                     }}
@@ -179,7 +179,22 @@ const Navbar = () => {
                 </div>
               )}
             </div>
-          )}
+          )
+            : <>
+              <button
+                className="bg-blue-500 text-white dark:bg-green-600 dark:text-yellow-300 dark:hover:bg-green-700 cursor-pointer px-4 py-2 rounded"
+                onClick={() => navigate("/login")}
+              >
+                Login
+              </button>
+              <button
+                className="bg-blue-500 text-white dark:bg-green-600 dark:text-yellow-300 dark:hover:bg-green-700 cursor-pointer px-4 py-2 rounded"
+                onClick={() => navigate("/register")}
+              >
+                Sign Up
+              </button>
+            </>
+          }
 
         </div>
       )}
