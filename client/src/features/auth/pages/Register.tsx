@@ -44,7 +44,6 @@ export default function Register() {
   // 🧠 3. onSubmit
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
-      console.log("Register data:", data)
       const response = await Axios({
         ...SummaryApi.register,
         data: {
@@ -52,7 +51,6 @@ export default function Register() {
           password: data.password,
         },
       })
-      console.log("Response from register:", response)
       const { data: responseData } = response;
       if (responseData.success && response.status === 201) {
         toast.dismiss();

@@ -33,7 +33,6 @@ export default function Login() {
   const dispatch = useDispatch<AppDispatch>()
 
   const user = useSelector((state: RootState) => state.user);
-  console.log('user from store', user);
 
   // 🧠 2. ใช้ useForm จาก React Hook Form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,7 +57,6 @@ export default function Login() {
       const { data: responseData } = response
       if (responseData.success && response.status === 200 && responseData.users) {
         
-        console.log('responseData',responseData.users)
         toast.dismiss()
         dispatch(setUserDetails(responseData.users)) // ส่งตรง object
         toast.success("Login successful!")
@@ -67,7 +65,6 @@ export default function Login() {
         toast.error("Login failed: data not found")
       }
     } catch (error: unknown) {
-      console.log('error', error)
       toast.dismiss()
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด")

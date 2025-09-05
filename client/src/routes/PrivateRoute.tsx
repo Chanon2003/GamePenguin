@@ -9,7 +9,6 @@ interface AdminPermisionProps {
 const AdminPermision: React.FC<AdminPermisionProps> = ({ children }) => {
   // ดึง user จาก Redux store
   const user = useSelector((state: RootState) => state.user)
-  console.log('user from private route',user)
   return (
     <>
       {(user?.id && (user.role === "user" || user.role === "admin")) ? (
