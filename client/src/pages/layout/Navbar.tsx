@@ -65,7 +65,7 @@ const Navbar = () => {
   }
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 shadow-sm bg-white dark:bg-zinc-900 border-b relative">
+    <header className="flex items-center justify-between px-6 py-4 shadow-sm bg-white dark:bg-zinc-900 border-b sticky top-0 z-50">
       <h1
         className="text-xl font-semibold text-zinc-800 dark:text-zinc-100 cursor-pointer"
         onClick={() => navigate('/')}
