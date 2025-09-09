@@ -7,7 +7,7 @@ import generatedAccessToken from "../utils/generatedAccessToken";
 import generatedRefreshToken from "../utils/generatedRefreshToken";
 import { CookieOptions } from 'express';
 import dotenv from 'dotenv';
-import { redisClient } from "../config/redis"; 
+import { redisClient } from "../config/redis";
 dotenv.config({ path: '.env' });
 
 // Extend Express Request interface to include 'user'
@@ -125,11 +125,11 @@ export const signinEmail = asyncWrapper(async (
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' 
+    sameSite: 'none'
   };
 
-  const refreshToken = await generatedRefreshToken(user.rows[0].id); 
-  const hashedToken = await bcrypt.hash(refreshToken, 10);   
+  const refreshToken = await generatedRefreshToken(user.rows[0].id);
+  const hashedToken = await bcrypt.hash(refreshToken, 10);
 
   const accessToken = await generatedAccessToken(email, user.rows[0].id); // 🔑 access token
 
