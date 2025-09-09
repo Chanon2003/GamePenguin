@@ -5,6 +5,7 @@ import morgan from 'morgan'
 import helmet from 'helmet'
 import dotenv from 'dotenv';
 import cors from 'cors';
+
 dotenv.config(); // โหลดค่า default จาก .env หลัก
 
 import pool from './config/db/db'; // <<-- เชื่อมต่อกับ db.ts

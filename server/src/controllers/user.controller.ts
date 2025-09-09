@@ -7,6 +7,7 @@ import generatedAccessToken from "../utils/generatedAccessToken";
 import generatedRefreshToken from "../utils/generatedRefreshToken";
 import { CookieOptions } from 'express';
 import dotenv from 'dotenv';
+import { redisClient } from "../config/redis"; 
 dotenv.config({ path: '.env' });
 
 // Extend Express Request interface to include 'user'
