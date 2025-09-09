@@ -182,6 +182,8 @@ export const signout = asyncWrapper(async (
   res.clearCookie('accessToken');
   res.clearCookie('refreshToken');
 
+  await redisClient.del(`refreshToken:${userId}`);
+
   await pool.query(
     'UPDATE users SET refresh_token = NULL WHERE id = $1',
     [userId]
