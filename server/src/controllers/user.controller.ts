@@ -7,7 +7,7 @@ import generatedAccessToken from "../utils/generatedAccessToken";
 import generatedRefreshToken from "../utils/generatedRefreshToken";
 import { CookieOptions } from 'express';
 import dotenv from 'dotenv';
-import { redisClient } from "../config/redis"; 
+import { redisClient } from "../config/redis";
 dotenv.config({ path: '.env' });
 
 // Extend Express Request interface to include 'user'
@@ -118,31 +118,37 @@ export const signinEmail = asyncWrapper(async (
     maxAge: 1000 * 60 * 60 * 24, // 1 วัน
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' // ✅ ตัวเล็ก
+    sameSite: 'none' // ✅ lowercase
   };
 
   const refreshTokenOptions: CookieOptions = {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 วัน
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' // ✅ ตัวเล็ก
+    sameSite: 'none'
   };
 
-  const refreshToken = await generatedRefreshToken(user.rows[0].id); // 🔁 สร้างก่อน
-  const hashedToken = await bcrypt.hash(refreshToken, 10);     // ✅ hash ทีหลัง
+  const refreshToken = await generatedRefreshToken(user.rows[0].id);
+  const hashedToken = await bcrypt.hash(refreshToken, 10);
 
   const accessToken = await generatedAccessToken(email, user.rows[0].id); // 🔑 access token
 
-  res.cookie('accessToken', accessToken, cookiesOption);
-  res.cookie('refreshToken', refreshToken, refreshTokenOptions); // 🔑 raw token ส่งให้ client
+  // ✅ Store the refresh token in Redis
+  await redisClient.set(
+    `refreshToken:${user.rows[0].id}`,
+    hashedToken,
+    { EX: 60 * 60 * 24 * 7 }
+  );
 
-  // ✅ เก็บ hashedToken ลงฐานข้อมูล
+  // ✅ store hashedToken in database
   await pool.query(
     'UPDATE users SET last_login = NOW(), refresh_token = $2 WHERE id = $1',
     [user.rows[0].id, hashedToken]
   );
 
-  console.log('accessToken', accessToken);
+
+  res.cookie('accessToken', accessToken, cookiesOption);
+  res.cookie('refreshToken', refreshToken, refreshTokenOptions); // 🔑 raw token -> client
 
   // ส่ง response กลับ frontend
   return res.status(200).json({
@@ -176,6 +182,8 @@ export const signout = asyncWrapper(async (
   res.clearCookie('accessToken');
   res.clearCookie('refreshToken');
 
+  await redisClient.del(`refreshToken:${userId}`);
+
   await pool.query(
     'UPDATE users SET refresh_token = NULL WHERE id = $1',
     [userId]
@@ -205,22 +213,20 @@ export const refreshToken = asyncWrapper(async (
     return next(createCustomError('Refresh token not found', 401));
   }
 
-  const userRecord = await pool.query(
-    'SELECT * FROM users WHERE id = $1',
-    [userId]
-  );
+  const redisKey: string = `refreshToken:${userId.toString()}`;
+  const hashedToken = await redisClient.get(redisKey);
 
-  if (userRecord.rowCount === 0) {
-    return next(createCustomError('User not found', 404));
+  if (!hashedToken) {
+    return next(createCustomError('Refresh token invalid or expired', 403));
   }
 
-  const isValidToken = await bcrypt.compare(refreshToken, userRecord.rows[0].refresh_token);
+  const isValidToken = await bcrypt.compare(refreshToken, hashedToken);
 
   if (!isValidToken) {
     return next(createCustomError('Invalid refresh token', 403));
   }
 
-  const newAccessToken = await generatedAccessToken(userRecord.rows[0].email, userId);
+  const newAccessToken = await generatedAccessToken(user.email, userId.toString());
 
   res.cookie('accessToken', newAccessToken, {
     maxAge: 1000 * 60 * 60, // 1 hour
