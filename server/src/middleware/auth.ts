@@ -18,8 +18,6 @@ if (!JWT_SECRET) {
 
 const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log('มา');
-    console.log('jwt', JWT_SECRET);
     const token =
       req.cookies?.accessToken ||
       (req.headers?.authorization?.startsWith("Bearer ")
@@ -36,7 +34,6 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
-    console.log('ผ่าน');
     // Check if decoded payload has 'id' property
     if (!decoded || typeof decoded !== 'object' || !('id' in decoded)) {
       return res.status(401).json({
@@ -47,7 +44,6 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
     }
 
     req.user = decoded;
-    console.log('ไป');
     next();
   } catch (error) {
     return res.status(401).json({

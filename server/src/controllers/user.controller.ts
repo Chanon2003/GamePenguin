@@ -213,22 +213,20 @@ export const refreshToken = asyncWrapper(async (
     return next(createCustomError('Refresh token not found', 401));
   }
 
-  const userRecord = await pool.query(
-    'SELECT * FROM users WHERE id = $1',
-    [userId]
-  );
+  const redisKey: string = `refreshToken:${userId.toString()}`;
+  const hashedToken = await redisClient.get(redisKey);
 
-  if (userRecord.rowCount === 0) {
-    return next(createCustomError('User not found', 404));
+  if (!hashedToken) {
+    return next(createCustomError('Refresh token invalid or expired', 403));
   }
 
-  const isValidToken = await bcrypt.compare(refreshToken, userRecord.rows[0].refresh_token);
+  const isValidToken = await bcrypt.compare(refreshToken, hashedToken);
 
   if (!isValidToken) {
     return next(createCustomError('Invalid refresh token', 403));
   }
 
-  const newAccessToken = await generatedAccessToken(userRecord.rows[0].email, userId);
+  const newAccessToken = await generatedAccessToken(user.email, userId.toString());
 
   res.cookie('accessToken', newAccessToken, {
     maxAge: 1000 * 60 * 60, // 1 hour
