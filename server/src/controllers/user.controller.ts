@@ -118,31 +118,37 @@ export const signinEmail = asyncWrapper(async (
     maxAge: 1000 * 60 * 60 * 24, // 1 วัน
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' // ✅ ตัวเล็ก
+    sameSite: 'none' // ✅ lowercase
   };
 
   const refreshTokenOptions: CookieOptions = {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 วัน
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' // ✅ ตัวเล็ก
+    sameSite: 'none' 
   };
 
-  const refreshToken = await generatedRefreshToken(user.rows[0].id); // 🔁 สร้างก่อน
-  const hashedToken = await bcrypt.hash(refreshToken, 10);     // ✅ hash ทีหลัง
+  const refreshToken = await generatedRefreshToken(user.rows[0].id); 
+  const hashedToken = await bcrypt.hash(refreshToken, 10);   
 
   const accessToken = await generatedAccessToken(email, user.rows[0].id); // 🔑 access token
 
-  res.cookie('accessToken', accessToken, cookiesOption);
-  res.cookie('refreshToken', refreshToken, refreshTokenOptions); // 🔑 raw token ส่งให้ client
+  // ✅ Store the refresh token in Redis
+  await redisClient.set(
+    `refreshToken:${user.rows[0].id}`,
+    hashedToken,
+    { EX: 60 * 60 * 24 * 7 }
+  );
 
-  // ✅ เก็บ hashedToken ลงฐานข้อมูล
+  // ✅ store hashedToken in database
   await pool.query(
     'UPDATE users SET last_login = NOW(), refresh_token = $2 WHERE id = $1',
     [user.rows[0].id, hashedToken]
   );
 
-  console.log('accessToken', accessToken);
+
+  res.cookie('accessToken', accessToken, cookiesOption);
+  res.cookie('refreshToken', refreshToken, refreshTokenOptions); // 🔑 raw token -> client
 
   // ส่ง response กลับ frontend
   return res.status(200).json({
