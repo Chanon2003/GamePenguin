@@ -10,8 +10,6 @@ import dotenv from 'dotenv';
 import { redisClient } from "../config/redis";
 dotenv.config({ path: '.env' });
 
-// Extend Express Request interface to include 'user'
-
 export const signupEmail = asyncWrapper(async (
   req: Request,
   res: Response,
@@ -46,15 +44,20 @@ export const signupEmail = asyncWrapper(async (
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = await pool.query(
+  const result = await pool.query(
     'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *',
     [email, hashedPassword]
   );
 
+  // Update cache in all users (Write-Through)
+  const allUsersResult = await pool.query('SELECT id, email, role, is_active, is_verified FROM users');
+  await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+
+
   return res.status(201).json({
     user: {
-      id: newUser.rows[0].id,
-      email: newUser.rows[0].email,
+      id: result.rows[0].id,
+      email: result.rows[0].email,
       profileSetup: false,
     },
     message: 'User registered successfully',
@@ -68,6 +71,18 @@ export const getAllUser = asyncWrapper(async (
   res: Response,
   next: NextFunction
 ) => {
+  const redisKey = 'users:all';
+
+  const cached = await redisClient.get(redisKey);
+  if (cached) {
+    return res.status(200).json({
+      users: JSON.parse(cached),
+      message: 'Users fetched from cache',
+      success: true,
+    });
+  }
+
+  // if cache miss -> query DB
   const users = await pool.query(
     'SELECT id, email, role, is_active, is_verified, last_login, created_at FROM users'
   );
@@ -76,9 +91,14 @@ export const getAllUser = asyncWrapper(async (
     return next(createCustomError('No users found', 404));
   }
 
-  // ส่ง response กลับ frontend
+  // updated cache 
+  await redisClient.set(redisKey, JSON.stringify(users.rows), { EX: 3600 }); // expire 1 hr
+
+  // send response back to frontend
   return res.status(200).json({
     users: users.rows,
+    message: 'Users fetched from DB',
+    success: true,
   });
 });
 
@@ -238,6 +258,32 @@ export const refreshToken = asyncWrapper(async (
   return res.status(200).json({
     accessToken: newAccessToken,
     message: 'Access token refreshed successfully',
+    success: true,
+  });
+});
+
+export const updateUser = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId, email, role } = req.body;
+
+  // 1️⃣ Update DB
+  const result = await pool.query(
+    'UPDATE users SET email=$1, role=$2 WHERE id=$3 RETURNING id, email, role, is_active, is_verified',
+    [email, role, userId]
+  );
+
+  if (result.rowCount === 0) return next(createCustomError('User not found', 404));
+
+  // 2️⃣ Update cache in all users
+  const allUsersResult = await pool.query('SELECT id, email, role, is_active, is_verified FROM users');
+  await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+
+  return res.status(200).json({
+    user: result.rows[0],
+    message: 'User updated successfully',
     success: true,
   });
 });
