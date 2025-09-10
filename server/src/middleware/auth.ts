@@ -56,12 +56,22 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
 
 export const authAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = req.user
-    console.log('uesr : ',user)
+    const user = req.user; // type: JwtPayload | undefined
+
+    console.log("user:", user);
+
+    if (!user || user.role !== "Admin") {
+      return res.status(401).json({
+        message: "Unauthorized: Invalid token payload",
+        error: true,
+        success: false,
+      });
+    }
+
     next();
   } catch (error) {
     return res.status(401).json({
-      message: 'Unauthorized: Token verification failed',
+      message: "Unauthorized: Token verification failed",
       error: true,
       success: false,
     });
