@@ -48,10 +48,20 @@ export const signupEmail = asyncWrapper(async (
     [email, hashedPassword]
   );
 
-  // Update cache in all users (Write-Through)
-  const allUsersResult = await pool.query('SELECT id, email, role, is_active, is_verified FROM users');
-  await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
-
+  const newUser = result.rows[0];
+  
+  //cache
+  const cache = await redisClient.get('users:all');
+  if (cache) {
+    const users = JSON.parse(cache);
+    users.push(newUser);
+    await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
+  } else {
+    const allUsersResult = await pool.query(
+      'SELECT id, email, role, is_active, is_verified FROM users'
+    );
+    await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+  }
 
   return res.status(201).json({
     user: {
@@ -150,7 +160,7 @@ export const signinEmail = asyncWrapper(async (
   const refreshToken = await generatedRefreshToken(user.rows[0].id);
   const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-  const accessToken = await generatedAccessToken(email, user.rows[0].id,user.rows[0].role); // 🔑 access token
+  const accessToken = await generatedAccessToken(email, user.rows[0].id, user.rows[0].role); // 🔑 access token
 
   // ✅ Store the refresh token in Redis
   await redisClient.set(
@@ -245,7 +255,7 @@ export const refreshToken = asyncWrapper(async (
     return next(createCustomError('Invalid refresh token', 403));
   }
 
-  const newAccessToken = await generatedAccessToken(user.email, userId.toString(),user.role);
+  const newAccessToken = await generatedAccessToken(user.email, userId.toString(), user.role);
 
   res.cookie('accessToken', newAccessToken, {
     maxAge: 1000 * 60 * 60, // 1 hour
@@ -276,13 +286,78 @@ export const updateUser = asyncWrapper(async (
 
   if (result.rowCount === 0) return next(createCustomError('User not found', 404));
 
-  // 2️⃣ Update cache in all users
-  const allUsersResult = await pool.query('SELECT id, email, role, is_active, is_verified FROM users');
-  await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+  const updatedUser = result.rows[0];
 
+  // ✅ update cache
+  const cache = await redisClient.get('users:all');
+  if (cache) {
+    let users = JSON.parse(cache);
+    users = users.map((u: any) => (u.id === updatedUser.id ? updatedUser : u));
+    await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
+  } else {
+    const allUsersResult = await pool.query(
+      'SELECT id,email,role,is_active,is_verified FROM users'
+    );
+    await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+  }
   return res.status(200).json({
     user: result.rows[0],
     message: 'User updated successfully',
+    success: true,
+  });
+});
+
+export const changeRole = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id, role } = req.body;
+  const admin = req.user;
+
+  if (!admin || !admin.id) {
+    return next(createCustomError('User not authenticated', 401));
+  }
+  if (!id || !role) {
+    return next(createCustomError('id or role is required', 401));
+  }
+
+  const oldRoleResult = await pool.query('SELECT role FROM users WHERE id=$1', [id]);
+  if (oldRoleResult.rows.length === 0) {
+    throw new Error("User not found");
+  }
+
+  const oldRole = oldRoleResult.rows[0].role;
+
+  const result = await pool.query(
+    'UPDATE users SET role=$1, updated_at=NOW() WHERE id=$2 RETURNING id,email,role,is_active,is_verified',
+    [role, id]
+  );
+
+  const newUser = result.rows[0];
+
+  await pool.query(
+    `INSERT INTO role_changes (user_id, old_role, new_role, changed_by, changed_by_name)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, oldRole, role, admin.id, admin.email]
+  );
+
+  // ✅ update cache
+  const cache = await redisClient.get('users:all');
+  if (cache) {
+    let users = JSON.parse(cache);
+    users = users.map((u: any) => (u.id === newUser.id ? newUser : u));
+    await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
+  } else {
+    const userResult = await pool.query(
+      'SELECT id,email,role,is_active,is_verified FROM users'
+    );
+    await redisClient.set('users:all', JSON.stringify(userResult.rows), { EX: 3600 });
+  }
+
+  return res.status(200).json({
+    user: newUser,
+    message: 'User role updated successfully',
     success: true,
   });
 });
