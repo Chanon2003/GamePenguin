@@ -16,7 +16,7 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined');
 }
 
-const auth = async (req: Request, res: Response, next: NextFunction) => {
+export const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const token =
       req.cookies?.accessToken ||
@@ -54,4 +54,20 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-export default auth;
+export const authAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user
+    console.log('uesr : ',user)
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      message: 'Unauthorized: Token verification failed',
+      error: true,
+      success: false,
+    });
+  }
+};
+
+
+
+
