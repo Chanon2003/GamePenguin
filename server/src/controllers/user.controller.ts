@@ -15,7 +15,6 @@ export const signupEmail = asyncWrapper(async (
   res: Response,
   next: NextFunction
 ) => {
-  console.log("Received signup request:", req.body);
   let { email, password }: { email: string; password: string } = req.body;
 
   if (!email || !password) {

@@ -6,9 +6,9 @@ import helmet from 'helmet'
 import dotenv from 'dotenv';
 import cors from 'cors';
 
-dotenv.config(); // โหลดค่า default จาก .env หลัก
+dotenv.config(); // load default from main .env 
 
-import pool from './config/db/db'; // <<-- เชื่อมต่อกับ db.ts
+import pool from './config/db/db'; 
 import errorHandlerMiddleware from './middleware/error-handler';
 import userRouter from './routes/user.routes';
 
@@ -27,13 +27,14 @@ app.use(cookieParser())
 app.use(morgan('dev'))
 app.use(helmet.frameguard({ action: 'deny' }));
 
+//check ip user
 app.use((req, res, next) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   console.log(`📡 IP เข้าใช้งาน: ${ip}`);
   next();
 });
 
-// ทดสอบเชื่อมต่อ DB
+//Data base test Connect.
 pool.connect()
   .then(() => {
     console.log('✅ Connected to PostgreSQL DB');
@@ -42,11 +43,13 @@ pool.connect()
     console.error('❌ DB connection error:', err);
   });
 
-// ตัวอย่าง route
+// ex.main route
 app.use('/api/user',userRouter);
 
+// use Error handler in middle ware
 app.use(errorHandlerMiddleware)
 
+//run sever
 app.listen(port, () => {
   console.log(`🚀 Server is running at http://localhost:${port}`);
 });

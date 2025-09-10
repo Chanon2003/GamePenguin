@@ -58,8 +58,6 @@ export const authAdmin = async (req: Request, res: Response, next: NextFunction)
   try {
     const user = req.user; // type: JwtPayload | undefined
 
-    console.log("user:", user);
-
     if (!user || user.role !== "Admin") {
       return res.status(401).json({
         message: "Unauthorized: Invalid token payload",
