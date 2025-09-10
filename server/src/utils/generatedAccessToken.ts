@@ -14,7 +14,7 @@ const generatedAccessToken = async(email: string, userId: string) => {
     timestamp: Date.now() // ✅ เพิ่มตัวแปรที่ไม่ซ้ำ
   };
 
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
 }
 
 export default generatedAccessToken
