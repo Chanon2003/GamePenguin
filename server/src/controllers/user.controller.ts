@@ -151,7 +151,7 @@ export const signinEmail = asyncWrapper(async (
   const refreshToken = await generatedRefreshToken(user.rows[0].id);
   const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-  const accessToken = await generatedAccessToken(email, user.rows[0].id); // 🔑 access token
+  const accessToken = await generatedAccessToken(email, user.rows[0].id,user.rows[0].role); // 🔑 access token
 
   // ✅ Store the refresh token in Redis
   await redisClient.set(
@@ -246,7 +246,7 @@ export const refreshToken = asyncWrapper(async (
     return next(createCustomError('Invalid refresh token', 403));
   }
 
-  const newAccessToken = await generatedAccessToken(user.email, userId.toString());
+  const newAccessToken = await generatedAccessToken(user.email, userId.toString(),user.role);
 
   res.cookie('accessToken', newAccessToken, {
     maxAge: 1000 * 60 * 60, // 1 hour

@@ -7,10 +7,11 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined');
 }
 
-const generatedAccessToken = async(email: string, userId: string) => {
+const generatedAccessToken = async(email: string, userId: string,userRole:string) => {
   const payload = {
     email,
     id:userId,
+    role:userRole,
     timestamp: Date.now() // ✅ เพิ่มตัวแปรที่ไม่ซ้ำ
   };
 
