@@ -44,7 +44,7 @@ export const signupEmail = asyncWrapper(async (
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const result = await pool.query(
-    'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *',
+    'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email, role, is_active, is_verified ,last_login, created_at',
     [email, hashedPassword]
   );
 
@@ -57,10 +57,7 @@ export const signupEmail = asyncWrapper(async (
     users.push(newUser);
     await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
   } else {
-    const allUsersResult = await pool.query(
-      'SELECT id, email, role, is_active, is_verified FROM users'
-    );
-    await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+    await redisClient.set('users:all', JSON.stringify(newUser), { EX: 3600 });
   }
 
   return res.status(201).json({
@@ -280,7 +277,7 @@ export const updateUser = asyncWrapper(async (
 
   // 1️⃣ Update DB
   const result = await pool.query(
-    'UPDATE users SET email=$1, role=$2 WHERE id=$3 RETURNING id, email, role, is_active, is_verified',
+    'UPDATE users SET email=$1, role=$2 WHERE id=$3 RETURNING id, email, role, is_active, is_verified, last_login, created_at',
     [email, role, userId]
   );
 
@@ -296,9 +293,9 @@ export const updateUser = asyncWrapper(async (
     await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
   } else {
     const allUsersResult = await pool.query(
-      'SELECT id,email,role,is_active,is_verified FROM users'
+      'SELECT id,email,role,is_active,is_verified, last_login, created_at FROM users'
     );
-    await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
+    await redisClient.set('users:all', JSON.stringify(allUsersResult), { EX: 3600 });
   }
   return res.status(200).json({
     user: result.rows[0],
@@ -330,7 +327,7 @@ export const changeRole = asyncWrapper(async (
   const oldRole = oldRoleResult.rows[0].role;
 
   const result = await pool.query(
-    'UPDATE users SET role=$1, updated_at=NOW() WHERE id=$2 RETURNING id,email,role,is_active,is_verified',
+    'UPDATE users SET role=$1, updated_at=NOW() WHERE id=$2 RETURNING id,email,role,is_active,is_verified, last_login, created_at',
     [role, id]
   );
 
@@ -350,7 +347,7 @@ export const changeRole = asyncWrapper(async (
     await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
   } else {
     const userResult = await pool.query(
-      'SELECT id,email,role,is_active,is_verified FROM users'
+      'SELECT id,email,role,is_active,is_verified, last_login, created_at FROM users'
     );
     await redisClient.set('users:all', JSON.stringify(userResult.rows), { EX: 3600 });
   }
