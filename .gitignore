@@ -1,3 +1,13 @@
-/client/node_modules
-/server/node_modules
+# Ignore node_modules every where
+node_modules/
+
+# client/server 
+/client/node_modules/
+/server/node_modules/
+
+# Build
+dist/
+dist-test/
+
+# Env
 .env*
