@@ -135,7 +135,7 @@ export const getUserById = asyncWrapper(async (
 
   // send response back to frontend
   return res.status(200).json({
-    users: user.rows[0],
+    user: user.rows[0],
     message: 'Users fetched from DB',
     success: true,
   });
