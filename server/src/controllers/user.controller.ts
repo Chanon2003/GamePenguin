@@ -49,7 +49,7 @@ export const signupEmail = asyncWrapper(async (
   );
 
   const newUser = result.rows[0];
-  
+
   //cache
   const cache = await redisClient.get('users:all');
   if (cache) {
@@ -103,6 +103,39 @@ export const getAllUser = asyncWrapper(async (
   // send response back to frontend
   return res.status(200).json({
     users: users.rows,
+    message: 'Users fetched from DB',
+    success: true,
+  });
+});
+
+export const getUserById = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id } = req.params
+  const redisKey = `users:${id}`;
+
+  let cache = await redisClient.get(redisKey);
+  if (cache) {
+    const userData = JSON.parse(cache); 
+    return res.status(200).json({
+      users: userData,
+      message: 'Users fetched from cache',
+      success: true,
+    });
+  }
+
+  const user = await pool.query("SELECT id, email, role, is_active, is_verified, last_login, created_at FROM users WHERE id=$1", [id]);
+
+  if (user.rows.length === 0) return res.status(404).json({ msg: "User not found" });
+
+  const userData = user.rows[0]; // object เดียว
+  await redisClient.set(redisKey, JSON.stringify(userData), { EX: 3600 });
+
+  // send response back to frontend
+  return res.status(200).json({
+    users: user.rows[0],
     message: 'Users fetched from DB',
     success: true,
   });
@@ -295,8 +328,12 @@ export const updateUser = asyncWrapper(async (
     const allUsersResult = await pool.query(
       'SELECT id,email,role,is_active,is_verified, last_login, created_at FROM users'
     );
-    await redisClient.set('users:all', JSON.stringify(allUsersResult), { EX: 3600 });
+    await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
   }
+
+  // ❌ invalidate cache for single user
+  await redisClient.del(`users:${updatedUser.id}`);
+
   return res.status(200).json({
     user: result.rows[0],
     message: 'User updated successfully',
@@ -339,7 +376,7 @@ export const changeRole = asyncWrapper(async (
     [id, oldRole, role, admin.id, admin.email]
   );
 
-  // ✅ update cache
+  // ✅ update cache all users
   const cache = await redisClient.get('users:all');
   if (cache) {
     let users = JSON.parse(cache);
@@ -347,10 +384,13 @@ export const changeRole = asyncWrapper(async (
     await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
   } else {
     const userResult = await pool.query(
-      'SELECT id,email,role,is_active,is_verified, last_login, created_at FROM users'
+      'SELECT id,email,role,is_active,is_verified,last_login,created_at FROM users'
     );
     await redisClient.set('users:all', JSON.stringify(userResult.rows), { EX: 3600 });
   }
+
+  // ❌ invalidate cache for single user
+  await redisClient.del(`users:${newUser.id}`);
 
   return res.status(200).json({
     user: newUser,
