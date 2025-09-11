@@ -211,7 +211,7 @@ export const signinEmail = asyncWrapper(async (
 
   // ส่ง response กลับ frontend
   return res.status(200).json({
-    users: {
+    user: {
       id: user.rows[0].id,
       email: user.rows[0].email,
       role: user.rows[0].role,

@@ -1,9 +1,10 @@
 import request from 'supertest';
-import app from '../src/app'
-import pool from '../src/config/db/db'
+import app from '../../src/app'
+import pool from '../../src/config/db/db'
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.token' });
+import bcrypt from 'bcrypt';
 
 // ✅ Import Jest globals  explicit
 import { describe, it, expect, afterAll } from '@jest/globals';
@@ -14,7 +15,7 @@ const JWT_SECRET = process.env.SECRET_KEY_ACCESS_TOKEN || 'secret';
 const testToken = jwt.sign(testUser, JWT_SECRET, { expiresIn: '1h' });
 
 describe('User API', () => {
-  it('GET /api/user should return all users', async () => {
+  it('GET /api/user/getusers should return all users', async () => {
     const res = await request(app)
       .get('/api/user/getusers')
       .set('Authorization', `Bearer ${testToken}`); // ✅ JWT
@@ -23,8 +24,8 @@ describe('User API', () => {
   });
 });
 
-describe('Auth API', () => {
-  it('POST /api/auth/signup should create new user', async () => {
+describe('Signup API', () => {
+  it('POST /api/user/signup-email should create new user', async () => {
     const newUser = {
       email: 'testuser@example.com',
       password: '123456'
@@ -38,6 +39,29 @@ describe('Auth API', () => {
     expect(res.status).toBe(201);                 
     expect(res.body.user).toHaveProperty('id');   
     expect(res.body.user.email).toBe(newUser.email); 
+  });
+});
+
+describe('Sign in API', () => {
+  it.only('POST /api/user/signin-email should return user', async () => {
+    const newUser = { email: 'testuser@example.com', password: '123456' };
+
+    const hashedPassword = await bcrypt.hash(newUser.password, 10);
+    // สร้าง user ก่อน login
+    await pool.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2)',
+      [newUser.email, hashedPassword]
+    );
+
+    const res = await request(app)
+      .post('/api/user/signin-email')
+      .send(newUser)
+      .set('Accept', 'application/json');
+
+    expect(res.status).toBe(200);
+    expect(res.body.user).toHaveProperty('id');
+    expect(res.body.user).toHaveProperty('role');
+    expect(res.body.user.email).toBe(newUser.email);
   });
 });
 
