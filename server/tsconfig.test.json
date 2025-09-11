@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],   // ✅ ตรงนี้สำคัญ
+    "module": "CommonJS",
+    "rootDir": ".",
+    "outDir": "./dist-test"
+  },
+  "include": ["tests/**/*.ts", "src/**/*.ts"]
+}
