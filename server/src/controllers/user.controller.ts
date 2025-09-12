@@ -53,11 +53,18 @@ export const signupEmail = asyncWrapper(async (
   //cache
   const cache = await redisClient.get('users:all');
   if (cache) {
-    const users = JSON.parse(cache);
-    users.push(newUser);
+    let users = JSON.parse(cache);
+    // ตรวจสอบว่าเป็น Array หรือไม่
+    if (Array.isArray(users)) {
+      users.push(newUser);
+    } else {
+      // ถ้าไม่ใช่ Array ให้แปลงเป็น Array
+      users = [users, newUser];
+    }
     await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
   } else {
-    await redisClient.set('users:all', JSON.stringify(newUser), { EX: 3600 });
+    // เก็บเป็น Array เสมอ
+    await redisClient.set('users:all', JSON.stringify([newUser]), { EX: 3600 });
   }
 
   return res.status(201).json({
@@ -77,6 +84,7 @@ export const getAllUser = asyncWrapper(async (
   res: Response,
   next: NextFunction
 ) => {
+  // await redisClient.del('users:all')
   const redisKey = 'users:all';
 
   const cached = await redisClient.get(redisKey);
@@ -118,7 +126,7 @@ export const getUserById = asyncWrapper(async (
 
   let cache = await redisClient.get(redisKey);
   if (cache) {
-    const userData = JSON.parse(cache); 
+    const userData = JSON.parse(cache);
     return res.status(200).json({
       users: userData,
       message: 'Users fetched from cache',
