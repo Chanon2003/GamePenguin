@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    container_name: gamepenguin-redis
+    ports:
+      - "6379:6379"
+  db:
+    image: postgres:16
+    container_name: gamepenguin-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Seen1024
+      POSTGRES_DB: gamepenguin
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  server:
+    build: ./server
+    container_name: gamepenguin-server
+    env_file:
+      - ./server/.env
+      - ./server/.env.db
+      - ./server/.env.token
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  db_data:
+
+
+
+
