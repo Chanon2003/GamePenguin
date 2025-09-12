@@ -63,6 +63,18 @@ describe('User API Integration Tests', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.users)).toBe(true);
   });
+
+  // ✅ update role
+  it.only('PUT /api/user/change-role should return new role', async () => {
+    const res = await request(app)
+      .put('/api/user/change-role')
+      .send({ id: testUserId, role: 'admin' })
+      .set('Authorization', `Bearer ${testToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.id).toBe(testUserId);
+    expect(res.body.user.role).toBe('admin');
+  });
 });
 
 afterAll(async () => {
