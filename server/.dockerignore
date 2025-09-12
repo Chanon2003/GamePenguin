@@ -1,0 +1,32 @@
+# Node modules (จะติดตั้งใหม่ใน container)
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# TypeScript build output
+dist
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# Dockerfile และ docker-compose ไฟล์ตัวอื่น ๆ ถ้าไม่จำเป็น
+Dockerfile.dev
+docker-compose.override.yml
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+coverage/
+*.test.ts
+*.spec.ts
