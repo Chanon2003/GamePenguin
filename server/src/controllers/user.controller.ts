@@ -7,9 +7,8 @@ import generatedAccessToken from "../utils/generatedAccessToken";
 import generatedRefreshToken from "../utils/generatedRefreshToken";
 import { CookieOptions } from 'express';
 import dotenv from 'dotenv';
+import { redisClient } from "../config/redis";
 dotenv.config({ path: '.env' });
-
-// Extend Express Request interface to include 'user'
 
 export const signupEmail = asyncWrapper(async (
   req: Request,
@@ -29,8 +28,8 @@ export const signupEmail = asyncWrapper(async (
     return next(createCustomError('Invalid email format', 400));
   }
 
-  if (password.length < 8) {
-    return next(createCustomError('Password must be at least 8 characters long', 400));
+  if (password.length < 6) {
+    return next(createCustomError('Password must be at least 6 characters long', 400));
   }
 
   const existingUser = await pool.query(
@@ -44,17 +43,22 @@ export const signupEmail = asyncWrapper(async (
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = await pool.query(
-    'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *',
+  const result = await pool.query(
+    'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email, role, is_active, is_verified ,last_login, created_at',
     [email, hashedPassword]
   );
 
+  await redisClient.del('users:all');
+
   return res.status(201).json({
     user: {
-      id: newUser.rows[0].id,
-      email: newUser.rows[0].email,
+      id: result.rows[0].id,
+      email: result.rows[0].email,
       profileSetup: false,
     },
+    message: 'User registered successfully',
+    success: true,
+    error: false
   });
 });
 
@@ -63,6 +67,18 @@ export const getAllUser = asyncWrapper(async (
   res: Response,
   next: NextFunction
 ) => {
+  const redisKey = 'users:all';
+
+  const cached = await redisClient.get(redisKey);
+  if (cached) {
+    return res.status(200).json({
+      users: JSON.parse(cached),
+      message: 'Users fetched from cache',
+      success: true,
+    });
+  }
+
+  // if cache miss -> query DB
   const users = await pool.query(
     'SELECT id, email, role, is_active, is_verified, last_login, created_at FROM users'
   );
@@ -71,9 +87,47 @@ export const getAllUser = asyncWrapper(async (
     return next(createCustomError('No users found', 404));
   }
 
-  // ส่ง response กลับ frontend
+  // updated cache 
+  await redisClient.set(redisKey, JSON.stringify(users.rows), { EX: 3600 }); // expire 1 hr
+
+  // send response back to frontend
   return res.status(200).json({
     users: users.rows,
+    message: 'Users fetched from DB',
+    success: true,
+  });
+});
+
+export const getUserById = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id } = req.params
+  const redisKey = `users:${id}`;
+
+  let cache = await redisClient.get(redisKey);
+  if (cache) {
+    const userData = JSON.parse(cache);
+    return res.status(200).json({
+      users: userData,
+      message: 'Users fetched from cache',
+      success: true,
+    });
+  }
+
+  const user = await pool.query("SELECT id, email, role, is_active, is_verified, last_login, created_at FROM users WHERE id=$1", [id]);
+
+  if (user.rows.length === 0) return res.status(404).json({ msg: "User not found" });
+
+  const userData = user.rows[0]; // object เดียว
+  await redisClient.set(redisKey, JSON.stringify(userData), { EX: 3600 });
+
+  // send response back to frontend
+  return res.status(200).json({
+    user: user.rows[0],
+    message: 'Users fetched from DB',
+    success: true,
   });
 });
 
@@ -113,35 +167,41 @@ export const signinEmail = asyncWrapper(async (
     maxAge: 1000 * 60 * 60 * 24, // 1 วัน
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' // ✅ ตัวเล็ก
+    sameSite: 'none' // ✅ lowercase
   };
 
   const refreshTokenOptions: CookieOptions = {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 วัน
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'none' // ✅ ตัวเล็ก
+    sameSite: 'none'
   };
 
-  const refreshToken = await generatedRefreshToken(user.rows[0].id); // 🔁 สร้างก่อน
-  const hashedToken = await bcrypt.hash(refreshToken, 10);     // ✅ hash ทีหลัง
+  const refreshToken = await generatedRefreshToken(user.rows[0].id);
+  const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-  const accessToken = await generatedAccessToken(email, user.rows[0].id); // 🔑 access token
+  const accessToken = await generatedAccessToken(email, user.rows[0].id, user.rows[0].role); // 🔑 access token
 
-  res.cookie('accessToken', accessToken, cookiesOption);
-  res.cookie('refreshToken', refreshToken, refreshTokenOptions); // 🔑 raw token ส่งให้ client
+  // ✅ Store the refresh token in Redis
+  await redisClient.set(
+    `refreshToken:${user.rows[0].id}`,
+    hashedToken,
+    { EX: 60 * 60 * 24 * 7 }
+  );
 
-  // ✅ เก็บ hashedToken ลงฐานข้อมูล
+  // ✅ store hashedToken in database
   await pool.query(
     'UPDATE users SET last_login = NOW(), refresh_token = $2 WHERE id = $1',
     [user.rows[0].id, hashedToken]
   );
 
-  console.log('accessToken', accessToken);
+
+  res.cookie('accessToken', accessToken, cookiesOption);
+  res.cookie('refreshToken', refreshToken, refreshTokenOptions); // 🔑 raw token -> client
 
   // ส่ง response กลับ frontend
   return res.status(200).json({
-    users: {
+    user: {
       id: user.rows[0].id,
       email: user.rows[0].email,
       role: user.rows[0].role,
@@ -149,7 +209,9 @@ export const signinEmail = asyncWrapper(async (
       is_verified: user.rows[0].is_verified,
       last_login: user.rows[0].last_login,
       created_at: user.rows[0].created_at
-    }
+    },
+    success: true,
+    error: false,
   });
 });
 
@@ -169,6 +231,8 @@ export const signout = asyncWrapper(async (
   res.clearCookie('accessToken');
   res.clearCookie('refreshToken');
 
+  await redisClient.del(`refreshToken:${userId}`);
+
   await pool.query(
     'UPDATE users SET refresh_token = NULL WHERE id = $1',
     [userId]
@@ -176,6 +240,127 @@ export const signout = asyncWrapper(async (
 
   return res.status(200).json({
     message: 'Sign out successful',
+    success: true,
+  });
+});
+
+export const refreshToken = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  if (!user || !user.id) {
+    return next(createCustomError('User not authenticated', 401));
+  }
+
+  const userId = user.id;
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    return next(createCustomError('Refresh token not found', 401));
+  }
+
+  const redisKey: string = `refreshToken:${userId.toString()}`;
+  const hashedToken = await redisClient.get(redisKey);
+
+  if (!hashedToken) {
+    return next(createCustomError('Refresh token invalid or expired', 403));
+  }
+
+  const isValidToken = await bcrypt.compare(refreshToken, hashedToken);
+
+  if (!isValidToken) {
+    return next(createCustomError('Invalid refresh token', 403));
+  }
+
+  const newAccessToken = await generatedAccessToken(user.email, userId.toString(), user.role);
+
+  res.cookie('accessToken', newAccessToken, {
+    maxAge: 1000 * 60 * 60, // 1 hour
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: 'none'
+  });
+
+  return res.status(200).json({
+    accessToken: newAccessToken,
+    message: 'Access token refreshed successfully',
+    success: true,
+  });
+});
+
+export const updateUser = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId, email, role } = req.body;
+
+  // 1️⃣ Update DB
+  const result = await pool.query(
+    'UPDATE users SET email=$1, role=$2 WHERE id=$3 RETURNING id, email, role, is_active, is_verified, last_login, created_at',
+    [email, role, userId]
+  );
+
+  if (result.rowCount === 0) return next(createCustomError('User not found', 404));
+
+  const updatedUser = result.rows[0];
+
+  // ❌ cache delete
+  await redisClient.del('users:all');
+  await redisClient.del(`users:${updatedUser.id}`);
+
+  return res.status(200).json({
+    user: result.rows[0],
+    message: 'User updated successfully',
+    success: true,
+  });
+});
+
+export const changeRole = asyncWrapper(async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id, role } = req.body;
+  const admin = req.user;
+
+  if (!admin || !admin.id) {
+    return next(createCustomError('User not authenticated', 401));
+  }
+  if (!id || !role) {
+    return next(createCustomError('id or role is required', 401));
+  }
+
+  const oldRoleResult = await pool.query('SELECT role FROM users WHERE id=$1', [id]);
+  if (oldRoleResult.rows.length === 0) {
+    throw new Error("User not found");
+  }
+
+  const oldRole = oldRoleResult.rows[0].role;
+
+  const result = await pool.query(
+    'UPDATE users SET role=$1, updated_at=NOW() WHERE id=$2 RETURNING id,email,role,is_active,is_verified, last_login, created_at',
+    [role, id]
+  );
+
+  const newUser = result.rows[0];
+
+  await pool.query(
+    `INSERT INTO role_changes (user_id, old_role, new_role, changed_by, changed_by_name)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, oldRole, role, admin.id, admin.email]
+  );
+
+  // ❌ cache delete
+  await redisClient.del('users:all');
+  await redisClient.del(`users:${newUser.id}`);
+
+  return res.status(200).json({
+    user: newUser,
+    message: 'User role updated successfully',
     success: true,
   });
 });

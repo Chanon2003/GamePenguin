@@ -16,10 +16,8 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined');
 }
 
-const auth = async (req: Request, res: Response, next: NextFunction) => {
+export const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log('มา');
-    console.log('jwt', JWT_SECRET);
     const token =
       req.cookies?.accessToken ||
       (req.headers?.authorization?.startsWith("Bearer ")
@@ -36,7 +34,6 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
-    console.log('ผ่าน');
     // Check if decoded payload has 'id' property
     if (!decoded || typeof decoded !== 'object' || !('id' in decoded)) {
       return res.status(401).json({
@@ -47,7 +44,6 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
     }
 
     req.user = decoded;
-    console.log('ไป');
     next();
   } catch (error) {
     return res.status(401).json({
@@ -58,4 +54,28 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-export default auth;
+export const authAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user; // type: JwtPayload | undefined
+
+    if (!user || user.role !== "Admin") {
+      return res.status(401).json({
+        message: "Unauthorized: Invalid token payload",
+        error: true,
+        success: false,
+      });
+    }
+
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      message: "Unauthorized: Token verification failed",
+      error: true,
+      success: false,
+    });
+  }
+};
+
+
+
+
