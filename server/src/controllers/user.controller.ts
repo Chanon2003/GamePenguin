@@ -48,17 +48,7 @@ export const signupEmail = asyncWrapper(async (
     [email, hashedPassword]
   );
 
-  const newUser = result.rows[0];
-
-  //cache
-  const cache = await redisClient.get('users:all');
-  if (cache) {
-    const users = JSON.parse(cache);
-    users.push(newUser);
-    await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
-  } else {
-    await redisClient.set('users:all', JSON.stringify(newUser), { EX: 3600 });
-  }
+  await redisClient.del('users:all');
 
   return res.status(201).json({
     user: {
@@ -118,7 +108,7 @@ export const getUserById = asyncWrapper(async (
 
   let cache = await redisClient.get(redisKey);
   if (cache) {
-    const userData = JSON.parse(cache); 
+    const userData = JSON.parse(cache);
     return res.status(200).json({
       users: userData,
       message: 'Users fetched from cache',
@@ -318,20 +308,8 @@ export const updateUser = asyncWrapper(async (
 
   const updatedUser = result.rows[0];
 
-  // ✅ update cache
-  const cache = await redisClient.get('users:all');
-  if (cache) {
-    let users = JSON.parse(cache);
-    users = users.map((u: any) => (u.id === updatedUser.id ? updatedUser : u));
-    await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
-  } else {
-    const allUsersResult = await pool.query(
-      'SELECT id,email,role,is_active,is_verified, last_login, created_at FROM users'
-    );
-    await redisClient.set('users:all', JSON.stringify(allUsersResult.rows), { EX: 3600 });
-  }
-
-  // ❌ invalidate cache for single user
+  // ❌ cache delete
+  await redisClient.del('users:all');
   await redisClient.del(`users:${updatedUser.id}`);
 
   return res.status(200).json({
@@ -376,20 +354,8 @@ export const changeRole = asyncWrapper(async (
     [id, oldRole, role, admin.id, admin.email]
   );
 
-  // ✅ update cache all users
-  const cache = await redisClient.get('users:all');
-  if (cache) {
-    let users = JSON.parse(cache);
-    users = users.map((u: any) => (u.id === newUser.id ? newUser : u));
-    await redisClient.set('users:all', JSON.stringify(users), { EX: 3600 });
-  } else {
-    const userResult = await pool.query(
-      'SELECT id,email,role,is_active,is_verified,last_login,created_at FROM users'
-    );
-    await redisClient.set('users:all', JSON.stringify(userResult.rows), { EX: 3600 });
-  }
-
-  // ❌ invalidate cache for single user
+  // ❌ cache delete
+  await redisClient.del('users:all');
   await redisClient.del(`users:${newUser.id}`);
 
   return res.status(200).json({
